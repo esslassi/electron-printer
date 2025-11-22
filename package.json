@@ -2,7 +2,7 @@
   "name": "@esslassi/electron-printer",
   "description": "Node API (N-API) supported electron.s || node.js printer bindings",
   "homepage": "https://github.com/esslassi/electron-printer",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "./lib/index.js",
   "types": "types/index.d.ts",
   "dependencies": {
@@ -15,7 +15,6 @@
     "electron-rebuild": "node-gyp rebuild --target_platform=win32 --target_arch=x64  --runtime=electron --target=35.0.1 --dist-url=https://electronjs.org/headers",
     "test": "node --test test/"
   },
-
   "author": {
     "name": "Esslassi Mohammed",
     "url": "http://foxneer.com/",
