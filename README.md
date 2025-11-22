@@ -1,4 +1,4 @@
-# @thesusheer/electron-printer
+# @esslassi/electron-printer
 
 **No recompilation required when upgrading Node.js versions, thanks to N-API!** 🎉
 
@@ -39,7 +39,7 @@ I was involved in a project where I needed to print from Node.js. This is the re
 
 ### How to install:
 ```
-npm install @thesusheer/electron-printer
+npm install @esslassi/electron-printer
 ```
 
 ### How to use:
@@ -48,17 +48,7 @@ See examples
 
 ### Author(s):
 
-* Ion Lupascu, ionlupascu@gmail.com
-
-### Contributors:
-
-* Thiago Lugli, @thiagoelg
-* Eko Eryanto, @ekoeryanto
-* Sudheer Gupta, @susheer
-
-### Project History:
-
-This project was originally written by Ion Lupascu using NAN and V8. It has been rewritten by @susheer to use N-API exclusively, removing dependencies on NAN and V8 to ensure better stability and compatibility with future Node.js and Electron versions.
+* Mohammed Esslassi, contact@foxneer.com
 
 ### Node.js Version Support:
 
