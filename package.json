@@ -1,0 +1,49 @@
+{
+  "name": "@esslassi/electron-printer",
+  "description": "Node API (N-API) supported electron.s || node.js printer bindings",
+  "homepage": "https://github.com/esslassi/electron-printer",
+  "version": "0.0.1",
+  "main": "./lib/index.js",
+  "types": "types/index.d.ts",
+  "dependencies": {
+    "node-addon-api": "^8.1.0"
+  },
+  "scripts": {
+    "install": "prebuild-install || node-gyp rebuild",
+    "rebuild": "node-gyp rebuild",
+    "release": "node-pre-gyp-github publish --release --commitish main",
+    "electron-rebuild": "node-gyp rebuild --target_platform=win32 --target_arch=x64  --runtime=electron --target=35.0.1 --dist-url=https://electronjs.org/headers",
+    "test": "node --test test/"
+  },
+
+  "author": {
+    "name": "Esslassi Mohammed",
+    "url": "http://foxneer.com/",
+    "email": "contact@foxneer.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/esslassi/electron-printer.git"
+  },
+  "binary": {
+    "module_name": "electron-printer",
+    "module_path": "./lib/",
+    "host": "https://github.com/esslassi/electron-printer/releases/download/",
+    "remote_path": "v{version}",
+    "tag_path": "https://github.com/esslassi/electron-printer/releases/tag/v{version}"
+  },
+  "licenses": [
+    {
+      "type": "BSD"
+    }
+  ],
+  "devDependencies": {
+    "@mapbox/node-pre-gyp": "^2.0.0",
+    "grunt": "^1.6.1",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-jshint": "^3.2.0",
+    "grunt-node-gyp": "^5.0.0",
+    "grunt-shell": "^4.0.0",
+    "node-pre-gyp-github": "^2.0.0"
+  }
+}
