@@ -2,7 +2,7 @@
   "name": "@esslassi/electron-printer",
   "description": "Node API (N-API) supported electron.s || node.js printer bindings",
   "homepage": "https://github.com/esslassi/electron-printer",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "./lib/index.js",
   "types": "types/index.d.ts",
   "dependencies": {
