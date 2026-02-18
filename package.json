@@ -24,9 +24,9 @@
     "printer"
   ],
   "author": {
-    "name": "Alex Santos de Souza",
+    "name": "Esslassi Mohammed",
     "url": "https://github.com/esslassi/electron-printer/#readme",
-    "email": "alexssmusica@gmail.com"
+    "email": "esslassi1996@gmail.com"
   },
   "binary": {
     "module_name": "electron_printer",
