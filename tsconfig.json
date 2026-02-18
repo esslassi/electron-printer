@@ -1,22 +1,22 @@
 {
+  "extends": "@tsconfig/node18/tsconfig.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "lib": [
-        "es6"
-    ],
-    "noImplicitAny": true,
-    "noImplicitThis": true,
-    "strictFunctionTypes": true,
-    "strictNullChecks": true,
-    "baseUrl": "../",
-    "typeRoots": [
-        "../"
-    ],
-    "types": [],
-    "noEmit": true,
-    "forceConsistentCasingInFileNames": true
+    "baseUrl": ".",
+    "outDir": "lib",
+    "rootDir": "packages",
+    "paths": {
+      "@/packages": [
+        "packages"
+      ]
+    },
+    "allowJs": false,
+    "checkJs": false,
+    "noEmit": true
   },
-  "files": [
-    "types/index.d.ts",
+  "include": [
+    "packages/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

@@ -1,39 +1,57 @@
 {
-  'variables': {
-    'module_name%': 'electron-printer',
-    'module_path%': 'lib'
-  },
-  'targets': [
-      {
-      "target_name": "action_after_build",
-      "type": "none",
-      "dependencies": [ "<(module_name)" ],
-      "copies": [
-        {
-          "files": [ "<(PRODUCT_DIR)/<(module_name).node" ],
-          "destination": "<(module_path)"
-        }
-      ]
-    },
+  "targets": [
     {
-      'target_name': '<(module_name)',
-      'sources': [
-        # is like "ls -1 src/*.cc", but gyp does not support direct patterns on
-        # sources
-        '<!@(["python", "tools/getSourceFiles.py", "src", "cc"])'
+      "target_name": "electron_printer",
+      "sources": [
+        "src/main.cpp",
+        "src/print.cpp",
+        "src/printer_factory.cpp"
       ],
-      'include_dirs': ["<!@(node -p \"require('node-addon-api').include\")"],
-      'dependencies': ["<!(node -p \"require('node-addon-api').gyp\")"],
-      'cflags!': [ '-fno-exceptions' ],
-      'cflags_cc!': [ '-fno-exceptions' ],
-      'xcode_settings': {
-        'GCC_ENABLE_CPP_EXCEPTIONS': 'YES',
-        'CLANG_CXX_LIBRARY': 'libc++',
-        'MACOSX_DEPLOYMENT_TARGET': '10.7'
-      },
-      'msvs_settings': {
-        'VCCLCompilerTool': { 'ExceptionHandling': 1 },
-      }
+      "include_dirs": [
+        "<!@(node -p \"require('node-addon-api').include\")"
+      ],
+      "dependencies": [
+        "<!(node -p \"require('node-addon-api').gyp\")"
+      ],
+      "defines": [ "NAPI_CPP_EXCEPTIONS" ],
+      "conditions": [
+        ['OS=="win"', {
+          "sources": ["src/windows_printer.cpp"],
+          "libraries": ["winspool.lib"],
+          "msvs_settings": {
+            "VCCLCompilerTool": {
+              "ExceptionHandling": 1
+            }
+          }
+        }],
+        ['OS=="mac"', {
+          "sources": ["src/mac_printer.cpp"],
+          "libraries": ["-lcups"],
+          "include_dirs": [
+            "/usr/include/cups"
+          ],
+          "xcode_settings": {
+            "OTHER_CFLAGS": ["-Wall"],
+            "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
+            "CLANG_CXX_LIBRARY": "libc++",
+            "MACOSX_DEPLOYMENT_TARGET": "10.7"
+          }
+        }],
+        ['OS=="linux"', {
+          "sources": ["src/linux_printer.cpp"],
+          "libraries": ["-lcups"],
+          "include_dirs": [
+            "/usr/include/cups"
+          ],
+          "cflags": [
+            "-Wall",
+            "-fexceptions"
+          ],
+          "cflags_cc": [
+            "-fexceptions"
+          ]
+        }]
+      ]
     }
   ]
 }

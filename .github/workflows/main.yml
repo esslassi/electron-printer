@@ -1,0 +1,91 @@
+name: CI Main
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  CI-main-windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      
+      - name: Install dependencies
+        run: npm install --no-save
+      
+      - name: Prebuild Node x64
+        run: npm run prebuild:master
+      
+      - name: Prebuild Node ia32
+        run: npm run prebuild:master
+      
+      - name: Prebuild Electron x64
+        run: npm run prebuild:master
+      
+      - name: Prebuild Electron ia32
+        run: npm run prebuild:master
+
+  CI-main-ubuntu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Install CUPS and build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcups2-dev build-essential python-is-python3 gcc g++ make
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib g++-multilib libc6-dev-i386 linux-libc-dev:i386 libcups2-dev:i386 python3-dev
+          sudo ldconfig
+      
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      
+      - name: Install dependencies
+        run: npm install --no-save
+      
+      - name: Prebuild Node x64
+        run: npm run prebuild:master
+      
+      - name: Prebuild Node ia32
+        run: npm run prebuild:master
+      
+      - name: Prebuild Electron x64
+        run: npm run prebuild:master
+      
+      - name: Prebuild Electron ia32
+        run: npm run prebuild:master
+
+  CI-main-macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      
+      - name: Install dependencies
+        run: npm install --no-save
+      
+      - name: Prebuild Node x64
+        run: npm run prebuild:master
+      
+      - name: Prebuild Electron x64
+        run: npm run prebuild:master
