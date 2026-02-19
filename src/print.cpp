@@ -1,272 +1,353 @@
 #include <napi.h>
+#include <fstream>
+#include <vector>
+#include <memory>
+#include <functional>
+
 #include "printer_factory.h"
+#include "printer_interface.h"
 
-class PrinterWorker : public Napi::AsyncWorker
+static std::unique_ptr<PrinterInterface> P()
 {
-private:
-    std::unique_ptr<PrinterInterface> printer;
-    std::function<void(PrinterWorker *)> work;
-    PrinterInfo printerResult;
-    std::vector<PrinterInfo> printersResult;
-    bool isMultiplePrinters;
-    bool success;
+    return PrinterFactory::Create();
+}
 
-public:
-    PrinterWorker(Napi::Function &callback, std::function<void(PrinterWorker *)> executeWork)
-        : Napi::AsyncWorker(callback),
-          work(executeWork),
-          isMultiplePrinters(false),
-          success(false)
+/* =========================================================
+   JS Converters
+========================================================= */
+
+static Napi::Object JsPrinterDetails(Napi::Env env, const PrinterDetailsNative &p)
+{
+    Napi::Object o = Napi::Object::New(env);
+    o.Set("name", p.name);
+    o.Set("isDefault", p.isDefault);
+
+    Napi::Object opts = Napi::Object::New(env);
+    for (auto &kv : p.options)
+        opts.Set(kv.first, kv.second);
+
+    o.Set("options", opts);
+    return o;
+}
+
+static Napi::Object JsDriverOptions(Napi::Env env, const DriverOptions &opts)
+{
+    Napi::Object out = Napi::Object::New(env);
+    for (auto &group : opts)
     {
-        printer = PrinterFactory::Create();
+        Napi::Object choices = Napi::Object::New(env);
+        for (auto &choice : group.second)
+            choices.Set(choice.first, Napi::Boolean::New(env, choice.second));
+        out.Set(group.first, choices);
     }
+    return out;
+}
+
+static Napi::Object JsJobDetails(Napi::Env env, const JobDetailsNative &j)
+{
+    Napi::Object o = Napi::Object::New(env);
+    o.Set("id", j.id);
+    o.Set("name", j.name);
+    o.Set("printerName", j.printerName);
+    o.Set("user", j.user);
+    o.Set("format", j.format);
+    o.Set("priority", j.priority);
+    o.Set("size", j.size);
+
+    Napi::Array st = Napi::Array::New(env, j.status.size());
+    for (size_t i = 0; i < j.status.size(); i++)
+        st.Set((uint32_t)i, j.status[i]);
+    o.Set("status", st);
+
+    o.Set("completedTime", Napi::Date::New(env, (double)j.completedTime * 1000.0));
+    o.Set("creationTime", Napi::Date::New(env, (double)j.creationTime * 1000.0));
+    o.Set("processingTime", Napi::Date::New(env, (double)j.processingTime * 1000.0));
+
+    return o;
+}
+
+/* =========================================================
+   Sync Methods
+========================================================= */
+
+Napi::Value getPrinters(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
+    auto printer = P();
+    auto list = printer->GetPrinters();
+
+    Napi::Array arr = Napi::Array::New(env, list.size());
+    for (size_t i = 0; i < list.size(); i++)
+        arr.Set((uint32_t)i, JsPrinterDetails(env, list[i]));
+
+    return arr;
+}
+
+Napi::Value getPrinter(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString())
+        Napi::TypeError::New(env, "printerName required").ThrowAsJavaScriptException();
+
+    auto printer = P();
+    auto p = printer->GetPrinter(info[0].As<Napi::String>().Utf8Value());
+    return JsPrinterDetails(env, p);
+}
+
+Napi::Value getPrinterDriverOptions(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString())
+        Napi::TypeError::New(env, "printerName required").ThrowAsJavaScriptException();
+
+    auto printer = P();
+    auto opts = printer->GetPrinterDriverOptions(info[0].As<Napi::String>().Utf8Value());
+    return JsDriverOptions(env, opts);
+}
+
+Napi::Value getSelectedPaperSize(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString())
+        Napi::TypeError::New(env, "printerName required").ThrowAsJavaScriptException();
+
+    auto printer = P();
+    auto ps = printer->GetSelectedPaperSize(info[0].As<Napi::String>().Utf8Value());
+    return Napi::String::New(env, ps);
+}
+
+Napi::Value getDefaultPrinterName(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
+    auto printer = P();
+    auto name = printer->GetDefaultPrinterName();
+    if (name.empty())
+        return env.Undefined();
+    return Napi::String::New(env, name);
+}
+
+Napi::Value getSupportedPrintFormats(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
+    auto printer = P();
+    auto formats = printer->GetSupportedPrintFormats();
+
+    Napi::Array arr = Napi::Array::New(env, formats.size());
+    for (size_t i = 0; i < formats.size(); i++)
+        arr.Set((uint32_t)i, formats[i]);
+
+    return arr;
+}
+
+Napi::Value getSupportedJobCommands(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
+    auto printer = P();
+    auto cmds = printer->GetSupportedJobCommands();
+
+    Napi::Array arr = Napi::Array::New(env, cmds.size());
+    for (size_t i = 0; i < cmds.size(); i++)
+        arr.Set((uint32_t)i, cmds[i]);
+
+    return arr;
+}
+
+Napi::Value getJob(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
+    if (info.Length() < 2 || !info[0].IsString() || !info[1].IsNumber())
+        Napi::TypeError::New(env, "getJob(printerName, jobId)").ThrowAsJavaScriptException();
+
+    auto printer = P();
+    auto job = printer->GetJob(
+        info[0].As<Napi::String>().Utf8Value(),
+        info[1].As<Napi::Number>().Int32Value());
+
+    return JsJobDetails(env, job);
+}
+
+Napi::Value setJob(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
+    if (info.Length() < 3 || !info[0].IsString() || !info[1].IsNumber() || !info[2].IsString())
+        Napi::TypeError::New(env, "setJob(printerName, jobId, command)").ThrowAsJavaScriptException();
+
+    auto printer = P();
+    printer->SetJob(
+        info[0].As<Napi::String>().Utf8Value(),
+        info[1].As<Napi::Number>().Int32Value(),
+        info[2].As<Napi::String>().Utf8Value());
+
+    return env.Undefined();
+}
+
+/* =========================================================
+   Async Print Worker
+========================================================= */
+
+class PrintWorker : public Napi::AsyncWorker
+{
+public:
+    PrintWorker(
+        Napi::Function successCb,
+        Napi::Function errorCb,
+        std::function<int()> workFn)
+        : Napi::AsyncWorker(successCb),
+          successRef(Napi::Persistent(successCb)),
+          errorRef(Napi::Persistent(errorCb)),
+          work(workFn)
+    {}
 
     void Execute() override
     {
-        if (printer)
+        try
         {
-            work(this);
+            jobId = work();
+            if (jobId <= 0)
+                SetError("Print failed");
         }
-        else
+        catch (...)
         {
-            SetError("Failed to create printer");
+            SetError("Print failed (exception)");
         }
     }
 
     void OnOK() override
     {
-        Napi::Env env = Env();
-        Napi::HandleScope scope(env);
-
-        if (isMultiplePrinters)
-        {
-            Napi::Array result = Napi::Array::New(env, printersResult.size());
-            for (size_t i = 0; i < printersResult.size(); i++)
-            {
-                result.Set(i, CreatePrinterObject(env, printersResult[i]));
-            }
-            Callback().Call({env.Null(), result});
-        }
-        else
-        {
-            Callback().Call({env.Null(), CreatePrinterObject(env, printerResult)});
-        }
+        Napi::HandleScope scope(Env());
+        successRef.Call({ Napi::String::New(Env(), std::to_string(jobId)) });
     }
 
-    PrinterInterface *GetPrinter() { return printer.get(); }
-    void SetPrinterResult(const PrinterInfo &result) { printerResult = result; }
-    void SetPrintersResult(const std::vector<PrinterInfo> &result)
+    void OnError(const Napi::Error &e) override
     {
-        printersResult = result;
-        isMultiplePrinters = true;
+        Napi::HandleScope scope(Env());
+        errorRef.Call({ e.Value() });
     }
-    void SetSuccess(bool value) { success = value; }
-    bool GetSuccess() const { return success; }
 
 private:
-    Napi::Object CreatePrinterObject(Napi::Env env, const PrinterInfo &printer)
-    {
-        Napi::Object result = Napi::Object::New(env);
-        result.Set("name", printer.name);
-        result.Set("status", printer.status);
-
-        // Só incluir estes campos se NÃO for um resultado do PrintDirect
-        if (!success)
-        { // Se success for true, é um PrintDirect
-            result.Set("isDefault", printer.isDefault);
-
-            Napi::Object details = Napi::Object::New(env);
-            for (const auto &detail : printer.details)
-            {
-                details.Set(detail.first, detail.second);
-            }
-            result.Set("details", details);
-        }
-
-        return result;
-    }
+    Napi::FunctionReference successRef;
+    Napi::FunctionReference errorRef;
+    std::function<int()> work;
+    int jobId = 0;
 };
 
-Napi::Value PrintDirect(const Napi::CallbackInfo &info)
+static Napi::Function SafeCb(Napi::Env env, Napi::Object opt, const char *key)
 {
-    Napi::Env env = info.Env();
+    if (opt.Has(key) && opt.Get(key).IsFunction())
+        return opt.Get(key).As<Napi::Function>();
+
+    return Napi::Function::New(env, [](const Napi::CallbackInfo &) {});
+}
+
+/* =========================================================
+   printDirect
+========================================================= */
+
+Napi::Value printDirect(const Napi::CallbackInfo &info)
+{
+    auto env = info.Env();
 
     if (info.Length() < 1 || !info[0].IsObject())
+        Napi::TypeError::New(env, "options object required").ThrowAsJavaScriptException();
+
+    Napi::Object opt = info[0].As<Napi::Object>();
+
+    if (!opt.Has("data"))
+        Napi::TypeError::New(env, "options.data required").ThrowAsJavaScriptException();
+
+    std::string printerName;
+    if (opt.Has("printer") && opt.Get("printer").IsString())
+        printerName = opt.Get("printer").As<Napi::String>().Utf8Value();
+
+    std::string type = "RAW";
+    if (opt.Has("type") && opt.Get("type").IsString())
+        type = opt.Get("type").As<Napi::String>().Utf8Value();
+
+    StringMap driverOpts;
+    if (opt.Has("options") && opt.Get("options").IsObject())
     {
-        Napi::TypeError::New(env, "Expected an object as argument").ThrowAsJavaScriptException();
-        return env.Null();
+        Napi::Object o = opt.Get("options").As<Napi::Object>();
+        auto props = o.GetPropertyNames();
+        for (uint32_t i = 0; i < props.Length(); i++)
+        {
+            auto k = props.Get(i).As<Napi::String>().Utf8Value();
+            auto v = o.Get(k).ToString().Utf8Value();
+            driverOpts[k] = v;
+        }
     }
 
-    Napi::Object options = info[0].As<Napi::Object>();
+    std::vector<uint8_t> data;
+    auto d = opt.Get("data");
 
-    if (!options.Has("printerName") || !options.Has("data"))
+    if (d.IsBuffer())
     {
-        Napi::TypeError::New(env, "Object must have 'printerName' and 'data' properties").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    if (!options.Get("printerName").IsString())
-    {
-        Napi::TypeError::New(env, "printerName must be a string").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    Napi::Value data = options.Get("data");
-    if (!data.IsString() && !data.IsBuffer())
-    {
-        Napi::TypeError::New(env, "data must be a string or Buffer").ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    std::string printerName = options.Get("printerName").As<Napi::String>().Utf8Value();
-    std::vector<uint8_t> printData;
-
-    if (data.IsString())
-    {
-        std::string strData = data.As<Napi::String>().Utf8Value();
-        printData.assign(strData.begin(), strData.end());
+        auto b = d.As<Napi::Buffer<uint8_t>>();
+        data.assign(b.Data(), b.Data() + b.Length());
     }
     else
     {
-        Napi::Buffer<uint8_t> buffer = data.As<Napi::Buffer<uint8_t>>();
-        printData.assign(buffer.Data(), buffer.Data() + buffer.Length());
+        auto s = d.ToString().Utf8Value();
+        data.assign(s.begin(), s.end());
     }
 
-    std::string dataType = "RAW";
-    if (options.Has("dataType") && options.Get("dataType").IsString())
-    {
-        dataType = options.Get("dataType").As<Napi::String>().Utf8Value();
-    }
+    auto successCb = SafeCb(env, opt, "success");
+    auto errorCb = SafeCb(env, opt, "error");
 
-    Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
-
-    auto callback = Napi::Function::New(env, [deferred](const Napi::CallbackInfo &info)
-                                        {
-        if (info[0].IsNull()) {
-            deferred.Resolve(info[1]);
-        } else {
-            deferred.Reject(info[0].As<Napi::Error>().Value());
-        }
-        return info.Env().Undefined(); });
-
-    auto worker = new PrinterWorker(
-        callback,
-        [printerName, printData, dataType](PrinterWorker *worker)
+    auto worker = new PrintWorker(
+        successCb,
+        errorCb,
+        [printerName, data, type, driverOpts]() -> int
         {
-            bool success = worker->GetPrinter()->PrintDirect(printerName, printData, dataType);
-            worker->SetSuccess(true); // Indica que é um resultado do PrintDirect
-            PrinterInfo result;
-            result.name = printerName;
-            result.status = success ? "success" : "failed";
-            worker->SetPrinterResult(result);
+            auto printer = P();
+            std::string usePrinter = printerName.empty()
+                ? printer->GetDefaultPrinterName()
+                : printerName;
+
+            return printer->PrintDirect(usePrinter, data, type, driverOpts);
         });
 
     worker->Queue();
-    return deferred.Promise();
+    return env.Undefined();
 }
 
-Napi::Value GetPrinters(const Napi::CallbackInfo &info)
+/* =========================================================
+   printFile
+========================================================= */
+
+Napi::Value printFile(const Napi::CallbackInfo &info)
 {
-    Napi::Env env = info.Env();
-    Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
-
-    auto callback = Napi::Function::New(env, [deferred](const Napi::CallbackInfo &info)
-                                        {
-        if (info[0].IsNull()) {
-            deferred.Resolve(info[1]);
-        } else {
-            deferred.Reject(info[0].As<Napi::Error>().Value());
-        }
-        return info.Env().Undefined(); });
-
-    auto worker = new PrinterWorker(
-        callback,
-        [](PrinterWorker *worker)
-        {
-            auto printers = worker->GetPrinter()->GetPrinters();
-            worker->SetPrintersResult(printers);
-        });
-
-    worker->Queue();
-    return deferred.Promise();
-}
-
-Napi::Value GetSystemDefaultPrinter(const Napi::CallbackInfo &info)
-{
-    Napi::Env env = info.Env();
-    Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
-
-    auto callback = Napi::Function::New(env, [deferred](const Napi::CallbackInfo &info)
-                                        {
-        if (info[0].IsNull()) {
-            deferred.Resolve(info[1]);
-        } else {
-            deferred.Reject(info[0].As<Napi::Error>().Value());
-        }
-        return info.Env().Undefined(); });
-
-    auto worker = new PrinterWorker(
-        callback,
-        [](PrinterWorker *worker)
-        {
-            auto printer = worker->GetPrinter()->GetSystemDefaultPrinter();
-            worker->SetPrinterResult(printer);
-        });
-
-    worker->Queue();
-    return deferred.Promise();
-}
-
-Napi::Value GetStatusPrinter(const Napi::CallbackInfo &info)
-{
-    Napi::Env env = info.Env();
+    auto env = info.Env();
 
     if (info.Length() < 1 || !info[0].IsObject())
-    {
-        Napi::TypeError::New(env, "Expected an object as argument").ThrowAsJavaScriptException();
-        return env.Null();
-    }
+        Napi::TypeError::New(env, "options object required").ThrowAsJavaScriptException();
 
-    Napi::Object options = info[0].As<Napi::Object>();
+    Napi::Object opt = info[0].As<Napi::Object>();
 
-    Napi::Array propertyNames = options.GetPropertyNames();
-    for (uint32_t i = 0; i < propertyNames.Length(); i++)
-    {
-        propertyNames.Get(i).As<Napi::String>();
-    }
+    if (!opt.Has("filename") || !opt.Get("filename").IsString())
+        Napi::TypeError::New(env, "options.filename required").ThrowAsJavaScriptException();
 
-    if (!options.Has("printerName"))
-    {
-        Napi::TypeError::New(env, "Object must have 'printerName' property").ThrowAsJavaScriptException();
-        return env.Null();
-    }
+    std::string filename = opt.Get("filename").As<Napi::String>().Utf8Value();
 
-    if (!options.Get("printerName").IsString())
-    {
-        Napi::TypeError::New(env, "printerName must be a string").ThrowAsJavaScriptException();
-        return env.Null();
-    }
+    std::string printerName;
+    if (opt.Has("printer") && opt.Get("printer").IsString())
+        printerName = opt.Get("printer").As<Napi::String>().Utf8Value();
 
-    std::string printerName = options.Get("printerName").As<Napi::String>().Utf8Value();
-    Napi::Promise::Deferred deferred = Napi::Promise::Deferred::New(env);
+    auto successCb = SafeCb(env, opt, "success");
+    auto errorCb = SafeCb(env, opt, "error");
 
-    auto callback = Napi::Function::New(env, [deferred](const Napi::CallbackInfo &info)
-                                        {
-        if (info[0].IsNull()) {
-            deferred.Resolve(info[1]);
-        } else {
-            deferred.Reject(info[0].As<Napi::Error>().Value());
-        }
-        return info.Env().Undefined(); });
-
-    auto worker = new PrinterWorker(
-        callback,
-        [printerName](PrinterWorker *worker)
+    auto worker = new PrintWorker(
+        successCb,
+        errorCb,
+        [printerName, filename]() -> int
         {
-            auto printer = worker->GetPrinter()->GetStatusPrinter(printerName);
-            worker->SetPrinterResult(printer);
+            auto printer = P();
+            std::string usePrinter = printerName.empty()
+                ? printer->GetDefaultPrinterName()
+                : printerName;
+
+            return printer->PrintFile(usePrinter, filename);
         });
 
     worker->Queue();
-    return deferred.Promise();
+    return env.Undefined();
 }

@@ -1,71 +1,164 @@
-import bindings from 'bindings';
-const electronPrinter = bindings('electron_printer');
+import bindings from 'bindings'
 
-export interface PrintOptions {
-  printerName: string;
-  data: string | Buffer;
-  dataType?: 'RAW' | 'TEXT' | 'COMMAND' | 'AUTO' | undefined;
-}
+const native = bindings('electron_printer')
 
-export interface Printer {
-  name: string;
-  isDefault: boolean;
-  status: string;
-  details: {
-    location?: string;
-    comment?: string;
-    driver?: string;
-    port?: string;
-    [key: string]: string | undefined;
-  };
-}
+/* ===========================
+   TYPES
+=========================== */
+
+export type PrintOnSuccessFunction = (jobId: string) => any
+export type PrintOnErrorFunction = (err: Error) => any
 
 export interface PrintDirectOptions {
-  printerName: string;
-  data: string | Buffer;
-  dataType?: 'RAW' | 'TEXT' | 'COMMAND' | 'AUTO' | undefined;
+  data: string | Buffer
+  printer?: string
+  type?: 'RAW' | 'TEXT' | 'PDF' | 'JPEG' | 'POSTSCRIPT' | 'COMMAND' | 'AUTO'
+  options?: { [key: string]: string }
+  success?: PrintOnSuccessFunction
+  error?: PrintOnErrorFunction
 }
 
-export interface GetStatusPrinterOptions {
-  printerName: string;
+export interface PrintFileOptions {
+  filename: string
+  printer?: string
+  success?: PrintOnSuccessFunction
+  error?: PrintOnErrorFunction
 }
 
-export interface PrintDirectOutput {
-  name: string;
-  status: 'success' | 'failed';
+export interface PrinterDetails {
+  name: string
+  isDefault: boolean
+  options: { [key: string]: string }
 }
 
-
-export async function printDirect(printOptions: PrintOptions): Promise<PrintDirectOutput> {
-  const input = {
-    ...printOptions,
-    printerName: normalizeString(printOptions.printerName)
-  }
-  const printer = await electronPrinter.printDirect(input)
-  return printer
+export interface PrinterDriverOptions {
+  [key: string]: { [key: string]: boolean }
 }
 
-export async function getStatusPrinter(printOptions: GetStatusPrinterOptions): Promise<Printer> {
-  const input = {
-    ...printOptions,
-    printerName: normalizeString(printOptions.printerName)
-  }
-  const printer = await electronPrinter.getStatusPrinter(input)
-  return printer
+export type JobStatus =
+  | 'PAUSED'
+  | 'PRINTING'
+  | 'PRINTED'
+  | 'CANCELLED'
+  | 'PENDING'
+  | 'ABORTED'
+
+export type JobCommand =
+  | "CANCEL"
+  | "PAUSE"
+  | "RESUME"
+
+export interface JobDetails {
+  id: number
+  name: string
+  printerName: string
+  user: string
+  format: string
+  priority: number
+  size: number
+  status: JobStatus[]
+  completedTime: Date
+  creationTime: Date
+  processingTime: Date
 }
 
+/* ===========================
+   DIRECT NATIVE EXPORTS
+=========================== */
 
-export async function getPrinters(): Promise<Printer[]> {
-  const printers = await electronPrinter.getPrinters()
-  return printers
+export function getPrinters(): PrinterDetails[] {
+  return native.getPrinters()
 }
 
-export async function getDefaultPrinter(): Promise<Printer> {
-  const printer = await electronPrinter.getDefaultPrinter()
-  return printer
+export function getPrinter(printerName: string): PrinterDetails {
+  return native.getPrinter(printerName)
 }
 
+export function getPrinterDriverOptions(
+  printerName: string
+): PrinterDriverOptions {
+  return native.getPrinterDriverOptions(printerName)
+}
 
-function normalizeString(str: string) {
-  return String.raw`${str}`
+export function getSelectedPaperSize(printerName: string): string {
+  return native.getSelectedPaperSize(printerName)
+}
+
+export function getDefaultPrinterName(): string | undefined {
+  return native.getDefaultPrinterName()
+}
+
+export function printDirect(options: PrintDirectOptions): void {
+  native.printDirect(options)
+}
+
+export function printFile(options: PrintFileOptions): void {
+  native.printFile(options)
+}
+
+export function getSupportedPrintFormats(): string[] {
+  return native.getSupportedPrintFormats()
+}
+
+export function getJob(
+  printerName: string,
+  jobId: number
+): JobDetails {
+  return native.getJob(printerName, jobId)
+}
+
+export function setJob(
+  printerName: string,
+  jobId: number,
+  command: JobCommand
+): void {
+  native.setJob(printerName, jobId, command)
+}
+
+export function getSupportedJobCommands(): string[] {
+  return native.getSupportedJobCommands()
+}
+/* ==================================================
+   PROMISE WRAPPERS (Async/Await Friendly)
+================================================== */
+
+export function printDirectAsync(
+  options: Omit<PrintDirectOptions, 'success' | 'error'>
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    native.printDirect({
+      ...options,
+      success: (jobId: string) => resolve(jobId),
+      error: (err: Error) => reject(err)
+    })
+  })
+}
+
+export function printFileAsync(
+  options: Omit<PrintFileOptions, 'success' | 'error'>
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    native.printFile({
+      ...options,
+      success: (jobId: string) => resolve(jobId),
+      error: (err: Error) => reject(err)
+    })
+  })
+}
+
+export function getJobAsync(
+  printerName: string,
+  jobId: number
+): Promise<JobDetails> {
+  return Promise.resolve(native.getJob(printerName, jobId))
+}
+
+export function getPrintersAsync(): Promise<PrinterDetails[]> {
+  return Promise.resolve(native.getPrinters())
+}
+
+export function getPrinterAsync(
+  printerName: string
+): Promise<PrinterDetails> {
+  return Promise.resolve(native.getPrinter(printerName))
 }

@@ -5,13 +5,30 @@
 #include <vector>
 #include <map>
 #include <cstdint>
+#include <ctime>
 
-struct PrinterInfo
-{
+using StringMap = std::map<std::string, std::string>;
+using DriverOptions = std::map<std::string, std::map<std::string, bool>>;
+
+struct PrinterDetailsNative {
     std::string name;
-    bool isDefault;
-    std::map<std::string, std::string> details;
-    std::string status;
+    bool isDefault = false;
+    StringMap options; // matches TS: options: { [k:string]: string }
+};
+
+struct JobDetailsNative {
+    int id = 0;
+    std::string name;
+    std::string printerName;
+    std::string user;
+    std::string format;
+    int priority = 0;
+    int size = 0;
+
+    std::vector<std::string> status; // TS: JobStatus[]
+    std::time_t completedTime = 0;
+    std::time_t creationTime = 0;
+    std::time_t processingTime = 0;
 };
 
 class PrinterInterface
@@ -19,11 +36,32 @@ class PrinterInterface
 public:
     virtual ~PrinterInterface() = default;
 
-    virtual PrinterInfo GetPrinterDetails(const std::string &printerName, bool isDefault = false) = 0;
-    virtual std::vector<PrinterInfo> GetPrinters() = 0;
-    virtual PrinterInfo GetSystemDefaultPrinter() = 0;
-    virtual bool PrintDirect(const std::string &printerName, const std::vector<uint8_t> &data, const std::string &dataType) = 0;
-    virtual PrinterInfo GetStatusPrinter(const std::string &printerName) = 0;
+    // Printers
+    virtual std::vector<PrinterDetailsNative> GetPrinters() = 0;
+    virtual PrinterDetailsNative GetPrinter(const std::string &printerName) = 0;
+    virtual std::string GetDefaultPrinterName() = 0;
+
+    // Driver options & paper
+    virtual DriverOptions GetPrinterDriverOptions(const std::string &printerName) = 0;
+    virtual std::string GetSelectedPaperSize(const std::string &printerName) = 0;
+
+    // Printing
+    // return jobId (>0) or 0 on failure
+    virtual int PrintDirect(const std::string &printerName,
+                            const std::vector<uint8_t> &data,
+                            const std::string &type,
+                            const StringMap &options) = 0;
+
+    virtual int PrintFile(const std::string &printerName,
+                          const std::string &filename) = 0;
+
+    // Capabilities
+    virtual std::vector<std::string> GetSupportedPrintFormats() = 0;
+
+    // Jobs
+    virtual JobDetailsNative GetJob(const std::string &printerName, int jobId) = 0;
+    virtual void SetJob(const std::string &printerName, int jobId, const std::string &command) = 0;
+    virtual std::vector<std::string> GetSupportedJobCommands() = 0;
 };
 
 #endif
