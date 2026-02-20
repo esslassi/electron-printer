@@ -1,7 +1,7 @@
 {
   "name": "@esslassi/electron-printer",
   "description": "Node.js and Electron bindings",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "main": "./lib/index.js",
   "private": false,
   "scripts": {
