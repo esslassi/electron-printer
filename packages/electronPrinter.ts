@@ -1,6 +1,11 @@
-import bindings from 'bindings'
+import path from 'path';
 
-const native = bindings('electron_printer')
+const native = require(
+  path.join(
+    __dirname,
+    '../build/Release/electron_printer.node'
+  )
+)
 
 /* ===========================
    TYPES
