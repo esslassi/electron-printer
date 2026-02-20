@@ -12,7 +12,7 @@ export type PrintOnErrorFunction = (err: Error) => any
 export interface PrintDirectOptions {
   data: string | Buffer
   printer?: string
-  type?: 'RAW' | 'TEXT' | 'PDF' | 'JPEG' | 'POSTSCRIPT' | 'COMMAND' | 'AUTO'
+  type?: 'RAW' | 'TEXT' | 'COMMAND' | 'AUTO'
   options?: { [key: string]: string }
   success?: PrintOnSuccessFunction
   error?: PrintOnErrorFunction

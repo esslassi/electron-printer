@@ -1,251 +1,319 @@
-Here is the clean **README.md** content ready to copy and paste:
+# 📦 @esslassi/electron-printer
+
+Cross-platform native printer driver for **Windows, macOS, and Linux**, built with Node-API (N-API).
+Works in **Node.js** and **Electron**.
+
+Supports:
+
+* 🖨 List printers
+* 📄 Print raw/text/command data
+* 📁 Print files
+* 📋 Get printer driver options
+* 📑 Get selected paper size
+* 📦 Get job status
+* ⛔ Cancel / pause / resume jobs
+* 🔄 Promise (async/await) wrappers included
 
 ---
 
-# Electron Printer (@esslassi/electron-printer)
-
-Node.js and Electron bindings for printer management and direct printing. Supports Windows and Linux (CUPS).
-
-## Features
-
-* List all available printers
-* Get the system default printer
-* Get detailed printer status
-* Direct printing (raw printing)
-* TypeScript support
-* Asynchronous API (Promises)
-* Compatible with Node.js and Electron
-
-## Requirements
-
-* Node.js >= 18.20.6
-* Electron >= 20.0.0
-* Windows or Linux
-* For Windows: Visual Studio Build Tools
-* For Linux: CUPS development headers
-
-```bash
-sudo apt-get install libcups2-dev
-```
-
-## Installation
+## 🚀 Installation
 
 ```bash
 npm install @esslassi/electron-printer
 ```
 
-For development:
+If using Electron:
 
 ```bash
-git clone https://github.com/esslassi/electron-printer.git
-cd electron-printer
-npm install
-npm run rebuild
+npx electron-rebuild
 ```
 
-## Usage
+---
 
-### JavaScript
+## 🧩 Supported Platforms
 
-```javascript
-const printer = require('@esslassi/electron-printer');
+| OS      | Backend      |
+| ------- | ------------ |
+| Windows | WinSpool API |
+| macOS   | CUPS         |
+| Linux   | CUPS         |
 
-// List all printers
-printer.getPrinters()
-  .then(printers => {
-    console.log('Available printers:', printers);
-  })
-  .catch(console.error);
+---
 
-// Get default printer
-printer.getDefaultPrinter()
-  .then(defaultPrinter => {
-    console.log('Default printer:', defaultPrinter);
-  })
-  .catch(console.error);
+# 📖 Usage
 
-// Check printer status
-printer.getStatusPrinter({ printerName: 'Printer Name' })
-  .then(status => {
-    console.log('Printer status:', status);
-  })
-  .catch(console.error);
-
-// Print directly
-const printOptions = {
-  printerName: 'Printer Name',
-  data: 'Text to print',
-  dataType: 'RAW' // optional (default is 'RAW')
-};
-
-printer.printDirect(printOptions)
-  .then(result => {
-    console.log('Result:', result);
-  })
-  .catch(console.error);
+```ts
+import * as printer from '@esslassi/electron-printer'
 ```
 
-### TypeScript
+---
 
-```typescript
-import printer, { 
-  Printer, 
-  PrintDirectOptions, 
-  GetStatusPrinterOptions 
-} from '@esslassi/electron-printer';
+# 🖨 Printer Management
 
-async function example() {
-  try {
-    const printers: Printer[] = await printer.getPrinters();
-    console.log('Printers:', printers);
+### Get all printers
 
-    const defaultPrinter: Printer = await printer.getDefaultPrinter();
-    console.log('Default printer:', defaultPrinter);
+```ts
+const printers = printer.getPrinters()
+```
 
-    const statusOptions: GetStatusPrinterOptions = {
-      printerName: 'Printer Name'
-    };
-    const status: Printer = await printer.getStatusPrinter(statusOptions);
-    console.log('Status:', status);
+### Async version
 
-    const printOptions: PrintDirectOptions = {
-      printerName: 'Printer Name',
-      data: Buffer.from('Text to print'),
-      dataType: 'RAW'
-    };
+```ts
+const printers = await printer.getPrintersAsync()
+```
 
-    const result = await printer.printDirect(printOptions);
-    console.log('Result:', result);
+---
 
-  } catch (error) {
-    console.error('Error:', error);
+### Get single printer
+
+```ts
+const details = printer.getPrinter("My Printer")
+```
+
+---
+
+### Get default printer
+
+```ts
+const defaultPrinter = printer.getDefaultPrinterName()
+```
+
+---
+
+### Get printer driver options
+
+```ts
+const options = printer.getPrinterDriverOptions("My Printer")
+```
+
+---
+
+### Get selected paper size
+
+```ts
+const paper = printer.getSelectedPaperSize("My Printer")
+```
+
+---
+
+# 🖨 Printing
+
+---
+
+## 🟢 Print Raw/Text Data (Callback)
+
+```ts
+printer.printDirect({
+  data: "Hello Printer\n\n",
+  printer: "My Printer",
+  type: "RAW",
+  success: (jobId) => {
+    console.log("Printed. Job ID:", jobId)
+  },
+  error: (err) => {
+    console.error("Print error:", err)
   }
-}
-```
-
-## API
-
-### getPrinters(): Promise<Printer[]>
-
-Lists all printers installed on the system.
-
-```typescript
-interface Printer {
-  name: string;
-  isDefault: boolean;
-  status: string;
-  details: {
-    location?: string;
-    comment?: string;
-    driver?: string;
-    port?: string;
-    [key: string]: string | undefined;
-  };
-}
+})
 ```
 
 ---
 
-### getDefaultPrinter(): Promise<Printer>
+## 🟢 Print Raw/Text Data (Async/Await)
 
-Returns the system default printer.
+```ts
+const jobId = await printer.printDirectAsync({
+  data: Buffer.from("Hello Printer\n\n"),
+  printer: "My Printer",
+  type: "RAW"
+})
+
+console.log("Printed. Job ID:", jobId)
+```
 
 ---
 
-### getStatusPrinter(options: GetStatusPrinterOptions): Promise<Printer>
+## 🟢 Print File (Callback)
 
-```typescript
-interface GetStatusPrinterOptions {
-  printerName: string;
+```ts
+printer.printFile({
+  filename: "./file.txt",
+  printer: "My Printer",
+  success: (jobId) => console.log(jobId),
+  error: (err) => console.error(err)
+})
+```
+
+---
+
+## 🟢 Print File (Async)
+
+```ts
+const jobId = await printer.printFileAsync({
+  filename: "./file.txt",
+  printer: "My Printer"
+})
+```
+
+---
+
+# 📦 Job Management
+
+---
+
+## Get Job Details
+
+```ts
+const job = printer.getJob("My Printer", 42)
+```
+
+### Async
+
+```ts
+const job = await printer.getJobAsync("My Printer", 42)
+```
+
+---
+
+## Cancel / Pause / Resume Job
+
+```ts
+printer.setJob("My Printer", 42, "CANCEL")
+printer.setJob("My Printer", 42, "PAUSE")
+printer.setJob("My Printer", 42, "RESUME")
+```
+
+---
+
+## Get Supported Job Commands
+
+```ts
+const commands = printer.getSupportedJobCommands()
+```
+
+---
+
+# 📄 Supported Print Formats
+
+```ts
+const formats = printer.getSupportedPrintFormats()
+```
+
+Typical values:
+
+* `RAW`
+* `TEXT`
+* `COMMAND`
+* `AUTO`
+
+> Windows supports RAW/TEXT/COMMAND directly.
+> macOS/Linux support additional formats via CUPS.
+
+---
+
+# 🧠 TypeScript Types
+
+Fully typed. Example:
+
+```ts
+export interface PrintDirectOptions {
+  data: string | Buffer
+  printer?: string
+  type?: 'RAW' | 'TEXT' | 'COMMAND' | 'AUTO'
+  options?: { [key: string]: string }
 }
 ```
 
 ---
 
-### printDirect(options: PrintDirectOptions): Promise<string>
+# ⚡ Promise Wrappers Included
 
-```typescript
-interface PrintDirectOptions {
-  printerName: string;
-  data: string | Buffer;
-  dataType?: 'RAW' | 'TEXT' | 'COMMAND' | 'AUTO';
+Built-in async wrappers:
+
+* `printDirectAsync`
+* `printFileAsync`
+* `getPrintersAsync`
+* `getPrinterAsync`
+* `getJobAsync`
+
+No extra wrapper needed.
+
+---
+
+# 🧪 Example Full Test
+
+```ts
+import * as printer from '@esslassi/electron-printer'
+
+async function test() {
+  const printers = await printer.getPrintersAsync()
+  const defaultPrinter = printer.getDefaultPrinterName()
+
+  const jobId = await printer.printDirectAsync({
+    data: "Test print\n\n",
+    printer: defaultPrinter,
+    type: "RAW"
+  })
+
+  const job = await printer.getJobAsync(defaultPrinter!, Number(jobId))
+
+  console.log(job)
 }
+
+test()
 ```
 
-### Possible Status Values
+---
 
-* ready
-* offline
-* error
-* paper-jam
-* paper-out
-* manual-feed
-* paper-problem
-* busy
-* printing
-* output-bin-full
-* not-available
-* waiting
-* processing
-* initializing
-* warming-up
-* toner-low
-* no-toner
-* page-punt
-* user-intervention
-* out-of-memory
-* door-open
+# 🏗 Architecture
+
+```
+Node.js / Electron
+        ↓
+N-API
+        ↓
+PrinterFactory
+        ↓
+Windows | macOS | Linux drivers
+```
+
+Native C++ backend with platform-specific implementations.
 
 ---
 
-## Supported Platforms
+# 🔧 Development
 
-* Windows (32/64-bit)
-* Linux (CUPS)
-
----
-
-## Troubleshooting
-
-### Windows
-
-1. Install Visual Studio Build Tools
-2. Run:
+Build from source:
 
 ```bash
-npm run rebuild
+npx node-gyp rebuild
 ```
 
-3. Verify printer access permissions
-
-### Linux
+Electron:
 
 ```bash
-sudo apt-get install libcups2-dev
-sudo service cups status
-sudo usermod -a -G lp $USER
+npx electron-rebuild
 ```
 
 ---
 
-## Development
-
-```bash
-git clone https://github.com/esslassi/electron-printer.git
-cd electron-printer
-npm install
-npm run rebuild
-node test.js
-```
-
----
-
-## License
+# 📜 License
 
 MIT
 
 ---
 
-## Author
+# 👨‍💻 Author
 
 Esslassi
+
+---
+
+If you want, I can also generate:
+
+* 🔥 NPM package.json template
+* 🧱 binding.gyp optimized version
+* ⚡ Prebuild support (no node-gyp required for users)
+* 🧪 Jest test suite
+* 📦 CLI tool version
+
+Tell me the next step 🚀

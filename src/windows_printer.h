@@ -1,15 +1,35 @@
 #ifndef WINDOWS_PRINTER_H
 #define WINDOWS_PRINTER_H
 
+#include "printer_interface.h"
+
 #include <windows.h>
 #include <winspool.h>
-#include <cstdint>
-#include "printer_interface.h"
-#include <vector>
+
+/* Now remove macro pollution */
+#ifdef GetDefaultPrinter
+#undef GetDefaultPrinter
+#endif
 
 #ifdef GetDefaultPrinter
 #undef GetDefaultPrinter
 #endif
+
+#ifdef GetPrinter
+#undef GetPrinter
+#endif
+
+#ifdef GetJob
+#undef GetJob
+#endif
+
+#ifdef SetJob
+#undef SetJob
+#endif
+
+#include <vector>
+#include <string>
+#include <cstdint>
 
 class WindowsPrinter : public PrinterInterface
 {
