@@ -1,11 +1,4 @@
-import path from 'path';
-
-const native = require(
-  path.join(
-    __dirname,
-    '../build/Release/electron_printer.node'
-  )
-)
+import native from './native';
 
 /* ===========================
    TYPES

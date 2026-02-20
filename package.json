@@ -3,6 +3,7 @@
   "description": "Node.js and Electron bindings",
   "version": "0.0.8",
   "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
   "private": false,
   "scripts": {
     "install": "node-gyp rebuild",
@@ -36,11 +37,17 @@
   },
   "license": "MIT",
   "gypfile": true,
+  "files": [
+    "lib",
+    "prebuilds",
+    "binding.gyp",
+    "src"
+  ],
   "dependencies": {
-    "bindings": "1.5.0",
     "dotenv": "17.2.3",
     "node-addon-api": "8.5.0",
-    "node-gyp": "12.1.0"
+    "node-gyp": "12.1.0",
+    "node-gyp-build": "^4.8.4"
   },
   "devDependencies": {
     "@semantic-release/changelog": "6.0.3",
